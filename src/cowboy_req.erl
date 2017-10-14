@@ -111,6 +111,9 @@
 -type resp_body_fun() :: fun((any(), module()) -> ok).
 -type send_chunk_fun() :: fun((iodata()) -> ok | {error, atom()}).
 -type resp_chunked_fun() :: fun((send_chunk_fun()) -> ok).
+-type resp_body() :: iodata() | resp_body_fun()
+		| {non_neg_integer(), resp_body_fun()}
+		| {chunked, resp_chunked_fun()}.
 
 -record(http_req, {
 	%% Transport.
@@ -147,9 +150,7 @@
 	resp_state = waiting :: locked | waiting | waiting_stream
 		| chunks | stream | done,
 	resp_headers = [] :: cowboy:http_headers(),
-	resp_body = <<>> :: iodata() | resp_body_fun()
-		| {non_neg_integer(), resp_body_fun()}
-		| {chunked, resp_chunked_fun()},
+	resp_body = <<>> :: resp_body(),
 
 	%% Functions.
 	onresponse = undefined :: undefined | already_called
@@ -810,8 +811,7 @@ reply(Status, Req=#http_req{resp_body=Body}) ->
 reply(Status, Headers, Req=#http_req{resp_body=Body}) ->
 	reply(Status, Headers, Body, Req).
 
--spec reply(cowboy:http_status(), cowboy:http_headers(),
-	iodata() | {non_neg_integer() | resp_body_fun()}, Req)
+-spec reply(cowboy:http_status(), cowboy:http_headers(), resp_body(), Req)
 	-> {ok, Req} when Req::req().
 reply(Status, Headers, Body, Req=#http_req{
 		socket=Socket, transport=Transport,
